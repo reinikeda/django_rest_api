@@ -12,7 +12,7 @@ class AlbumSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Album
-        fields = ('id', 'name', 'band', 'band_name')
+        fields = ('id', 'name', 'band', 'band_name', 'cover')
 
 
 class SongSerializer(serializers.ModelSerializer):

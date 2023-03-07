@@ -15,6 +15,7 @@ class Band(models.Model):
 class Album(models.Model):
     name = models.CharField(max_length=200)
     band = models.ForeignKey(Band, on_delete=models.CASCADE, related_name='albums')
+    cover = models.ImageField(upload_to='playlist/images', blank=True, null=True)
 
     def __str__(self):
         return self.name
