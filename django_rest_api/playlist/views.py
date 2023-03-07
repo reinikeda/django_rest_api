@@ -1,6 +1,7 @@
 from django.utils.translation import gettext_lazy as _
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, mixins, status
 from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
 from . import models, serializers
 
 
@@ -33,7 +34,7 @@ class AdminOwnedObjectRUDMixin():
         else:
             raise ValidationError(_('Object not found or does not belong to you.'))
 
-
+# only superuser should add new data
 class BandList(generics.ListCreateAPIView):
     serializer_class = serializers.BandSerializer
     queryset = models.Band.objects.all()
@@ -49,7 +50,7 @@ class BandDetail(AdminOwnedObjectRUDMixin, generics.RetrieveUpdateDestroyAPIView
 class AlbumList(generics.ListCreateAPIView):
     serializer_class = serializers.AlbumSerializer
     queryset = models.Album.objects.all()
-    permission_classes = (permissions.IsAuthenticatedOrReadOnly, )
+    permission_classes = (permissions.IsAdminUser, )
 
 
 class AlbumDetail(AdminOwnedObjectRUDMixin, generics.RetrieveUpdateDestroyAPIView):
@@ -110,16 +111,28 @@ class CommentDetails(UserOwnedObjectRUDMixin, generics.RetrieveUpdateDestroyAPIV
     permission_classes = (permissions.IsAuthenticatedOrReadOnly, )
 
 
-# class ReviewLikeList(generics.ListCreateAPIView):
-#     serializer_class = serializers.ReviewLikeSerializer
-#     queryset = models.AlbumReviewLike.objects.all()
-#     permission_classes = (permissions.IsAuthenticatedOrReadOnly, )
+class ReviewLikeList(generics.CreateAPIView, mixins.DestroyModelMixin):
+    serializer_class = serializers.ReviewLikeSerializer
+    permission_classes = (permissions.IsAuthenticated, )
 
-#     def perform_create(self, serializer):
-#         serializer.save(user=self.request.user, )
+    def get_queryset(self):
+        return models.AlbumReviewLike.objects.filter(
+            user=self.request.user,
+            album_review=models.AlbumReview.objects.get(id=self.kwargs['album_review_id'])
+        )
 
+    def perform_create(self, serializer):
+        if self.get_queryset().exists():
+            raise ValidationError(_('You already like this'))
+        else:
+            serializer.save(
+                user=self.request.user,
+                album_review=models.AlbumReview.objects.get(id=self.kwargs['album_review_id'])
+            )
 
-# class ReviewLikeDetails(generics.RetrieveUpdateDestroyAPIView, UserOwnedObjectRUDMixin):
-#     serializer_class = serializers.ReviewLikeSerializer
-#     queryset = models.AlbumReviewLike.objects.all()
-#     permission_classes = (permissions.IsAuthenticatedOrReadOnly, )
+    def delete(self, request, *args, **kwargs):
+        if self.get_queryset().exists():
+            self.get_queryset().delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        else:
+            raise ValidationError(_('You cannot unlike what you don\'t like'))
