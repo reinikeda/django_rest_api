@@ -1,9 +1,27 @@
+from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 from rest_framework import generics, permissions, mixins, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from . import models, serializers
 
+
+User = get_user_model()
+
+
+class UserCreate(generics.CreateAPIView, mixins.DestroyModelMixin):
+    queryset = User.objects.all()
+    serializer_class = serializers.UserSerializer
+    permission_classes = (permissions.AllowAny, )
+
+    def delete(self, request, *args, **kwargs):
+        user = User.objects.filter(pk=self.request.user.pk)
+        if user.exists():
+            user.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        else:
+            raise ValidationError('User does not exist')
+    
 
 class UserOwnedObjectRUDMixin():
     def delete(self, request, *args, **kwargs):
@@ -50,7 +68,7 @@ class BandDetail(AdminOwnedObjectRUDMixin, generics.RetrieveUpdateDestroyAPIView
 class AlbumList(generics.ListCreateAPIView):
     serializer_class = serializers.AlbumSerializer
     queryset = models.Album.objects.all()
-    permission_classes = (permissions.IsAdminUser, )
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly, )
 
 
 class AlbumDetail(AdminOwnedObjectRUDMixin, generics.RetrieveUpdateDestroyAPIView):

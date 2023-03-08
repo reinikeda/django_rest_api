@@ -14,4 +14,5 @@ urlpatterns = [
     path('comments/', views.CommentList.as_view()),
     path('comment/<int:pk>/', views.CommentDetails.as_view()),
     path('<int:album_review_id>/like/', views.ReviewLikeList.as_view()),
+    path('signup/', views.UserCreate.as_view()),
 ]
